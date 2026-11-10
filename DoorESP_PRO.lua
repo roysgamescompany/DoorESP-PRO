@@ -1,6 +1,7 @@
 
 --============================================================
--- DOOR ESP PRO v1.2
+-- DOOR ESP PRO v2.0
+-- PART 1/2
 -- SINGLE LOCALSCRIPT
 -- StarterPlayer > StarterPlayerScripts
 --============================================================
@@ -15,14 +16,14 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
 --============================================================
--- CONFIGURATION
+-- CONFIG
 --============================================================
 
 local Config = {
     ESP = true,
     ShowName = true,
     ShowDistance = true,
-    InstantPrompt = true,
+    InstantPrompt = false,
     MaxDistance = 5000,
 }
 
@@ -32,14 +33,17 @@ local Colors = {
 }
 
 local ORANGE = Color3.fromRGB(255, 145, 45)
-local DARK = Color3.fromRGB(18, 18, 23)
-local PANEL = Color3.fromRGB(28, 27, 35)
-local ROW = Color3.fromRGB(39, 38, 48)
-local WHITE = Color3.fromRGB(240, 235, 240)
-local GRAY = Color3.fromRGB(145, 140, 155)
+local DARK = Color3.fromRGB(15, 15, 19)
+local PANEL = Color3.fromRGB(27, 27, 32)
+local ROW = Color3.fromRGB(43, 43, 49)
+local WHITE = Color3.fromRGB(245, 245, 245)
+local GRAY = Color3.fromRGB(155, 155, 165)
+local GREEN = Color3.fromRGB(0, 180, 145)
 
 local tracked = {}
 local promptOriginals = {}
+local rowRegistry = {}
+
 local espSuspended = false
 local destroyed = false
 
@@ -85,7 +89,7 @@ local Gui = Instance.new("ScreenGui")
 Gui.Name = "DoorESP_PRO"
 Gui.ResetOnSpawn = false
 Gui.IgnoreGuiInset = true
-Gui.DisplayOrder = 9999
+Gui.DisplayOrder = 999
 Gui.Parent = PlayerGui
 
 local function corner(obj, radius)
@@ -103,28 +107,28 @@ local function stroke(obj, color, thickness)
     return s
 end
 
-local function makeLabel(parent, text, size, position, color)
-    local label = Instance.new("TextLabel")
-    label.Size = size
-    label.Position = position
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = color or WHITE
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 13
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = parent
-    return label
+local function label(parent, text, size, position, color)
+    local l = Instance.new("TextLabel")
+    l.Size = size
+    l.Position = position
+    l.BackgroundTransparency = 1
+    l.Text = text
+    l.TextColor3 = color or WHITE
+    l.Font = Enum.Font.Gotham
+    l.TextSize = 13
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Parent = parent
+    return l
 end
 
 --============================================================
--- FLOATING ORB
+-- FLOATING BUTTON
 --============================================================
 
 local Orb = Instance.new("TextButton")
 Orb.Name = "DoorESP_Orb"
 Orb.Size = UDim2.fromOffset(52, 52)
-Orb.Position = UDim2.new(0, 20, 0.5, -26)
+Orb.Position = UDim2.new(0, 18, 0.5, -26)
 Orb.BackgroundColor3 = DARK
 Orb.Text = "D"
 Orb.TextColor3 = ORANGE
@@ -141,16 +145,17 @@ stroke(Orb, ORANGE, 2)
 
 local Main = Instance.new("Frame")
 Main.Name = "Main"
-Main.Size = UDim2.fromOffset(340, 440)
-Main.Position = UDim2.new(0.5, -170, 0.5, -220)
+Main.Size = UDim2.fromOffset(650, 440)
+Main.Position = UDim2.new(0.5, -325, 0.5, -220)
 Main.BackgroundColor3 = DARK
 Main.BorderSizePixel = 0
 Main.Visible = false
 Main.Active = true
+Main.ClipsDescendants = true
 Main.Parent = Gui
 
-corner(Main, 14)
-stroke(Main, ORANGE, 1.5)
+corner(Main, 13)
+stroke(Main, Color3.fromRGB(65, 65, 72), 1)
 
 --============================================================
 -- DRAG SYSTEM
@@ -158,13 +163,13 @@ stroke(Main, ORANGE, 1.5)
 
 local function makeDraggable(object, handle)
     local dragging = false
-    local dragInput
     local dragStart
     local startPosition
 
     handle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
+
             dragging = true
             dragStart = input.Position
             startPosition = object.Position
@@ -177,15 +182,12 @@ local function makeDraggable(object, handle)
         end
     end)
 
-    handle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
     UIS.InputChanged:Connect(function(input)
-        if dragging and input == dragInput then
+        if dragging and (
+            input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch
+        ) then
+
             local delta = input.Position - dragStart
 
             object.Position = UDim2.new(
@@ -198,7 +200,7 @@ local function makeDraggable(object, handle)
     end)
 end
 
--- Orb movement without blocking its click
+makeDraggable(Main, Main)
 makeDraggable(Orb, Orb)
 
 --============================================================
@@ -211,82 +213,145 @@ Header.BackgroundColor3 = PANEL
 Header.BorderSizePixel = 0
 Header.Parent = Main
 
-corner(Header, 12)
-
-local Title = makeLabel(
+local Title = label(
     Header,
-    "DOOR ESP PRO",
-    UDim2.new(1, -55, 1, 0),
-    UDim2.fromOffset(15, 0),
-    ORANGE
+    "DOOR ESP PRO  |  v2.0",
+    UDim2.new(1, -100, 1, 0),
+    UDim2.fromOffset(18, 0),
+    WHITE
 )
 
-Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+
+local Minimize = Instance.new("TextButton")
+Minimize.Size = UDim2.fromOffset(35, 30)
+Minimize.Position = UDim2.new(1, -85, 0, 9)
+Minimize.BackgroundColor3 = ROW
+Minimize.Text = "—"
+Minimize.TextColor3 = WHITE
+Minimize.TextSize = 17
+Minimize.Parent = Header
+corner(Minimize, 7)
 
 local Close = Instance.new("TextButton")
-Close.Size = UDim2.fromOffset(28, 28)
-Close.Position = UDim2.new(1, -37, 0, 10)
-Close.BackgroundColor3 = Color3.fromRGB(65, 35, 38)
+Close.Size = UDim2.fromOffset(35, 30)
+Close.Position = UDim2.new(1, -43, 0, 9)
+Close.BackgroundColor3 = Color3.fromRGB(105, 43, 43)
 Close.Text = "X"
 Close.TextColor3 = WHITE
 Close.Font = Enum.Font.GothamBold
 Close.Parent = Header
-
-corner(Close, 8)
+corner(Close, 7)
 
 Close.Activated:Connect(function()
     Main.Visible = false
 end)
 
-makeDraggable(Main, Header)
+Minimize.Activated:Connect(function()
+    Main.Visible = false
+end)
 
 Orb.Activated:Connect(function()
     Main.Visible = not Main.Visible
 end)
 
 --============================================================
--- TABS
+-- SIDEBAR
 --============================================================
 
-local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, -16, 0, 43)
-TabBar.Position = UDim2.fromOffset(8, 57)
-TabBar.BackgroundTransparency = 1
-TabBar.Parent = Main
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 165, 1, -58)
+Sidebar.Position = UDim2.fromOffset(8, 53)
+Sidebar.BackgroundColor3 = PANEL
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = Main
 
-local TabLayout = Instance.new("UIListLayout")
-TabLayout.FillDirection = Enum.FillDirection.Horizontal
-TabLayout.Padding = UDim.new(0, 4)
-TabLayout.Parent = TabBar
+corner(Sidebar, 9)
+
+local SideLayout = Instance.new("UIListLayout")
+SideLayout.Padding = UDim.new(0, 7)
+SideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+SideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+SideLayout.Parent = Sidebar
+
+local SidePadding = Instance.new("UIPadding")
+SidePadding.PaddingTop = UDim.new(0, 10)
+SidePadding.PaddingLeft = UDim.new(0, 7)
+SidePadding.PaddingRight = UDim.new(0, 7)
+SidePadding.Parent = Sidebar
+
+--============================================================
+-- CONTENT AREA
+--============================================================
 
 local Content = Instance.new("Frame")
-Content.Size = UDim2.new(1, -16, 1, -110)
-Content.Position = UDim2.fromOffset(8, 104)
+Content.Size = UDim2.new(1, -185, 1, -58)
+Content.Position = UDim2.fromOffset(178, 53)
 Content.BackgroundColor3 = PANEL
 Content.BorderSizePixel = 0
 Content.Parent = Main
 
-corner(Content, 10)
+corner(Content, 9)
 
-local Tabs = {"VISUAL", "INTERACTION", "COMBATE", "SETTINGS"}
+-- SEARCH
+local Search = Instance.new("TextBox")
+Search.Size = UDim2.new(1, -24, 0, 37)
+Search.Position = UDim2.fromOffset(12, 10)
+Search.BackgroundColor3 = ROW
+Search.Text = ""
+Search.PlaceholderText = "Buscar opciones..."
+Search.PlaceholderColor3 = GRAY
+Search.TextColor3 = WHITE
+Search.Font = Enum.Font.Gotham
+Search.TextSize = 13
+Search.ClearTextOnFocus = false
+Search.Parent = Content
+
+corner(Search, 7)
+
+--============================================================
+-- PAGES
+--============================================================
+
+local Tabs = {
+    "VISUAL",
+    "INTERACTION",
+    "COMBATE",
+    "SETTINGS"
+}
 
 local Pages = {}
 local TabButtons = {}
+local activeTab = "VISUAL"
 
-for _, name in ipairs(Tabs) do
+for index, name in ipairs(Tabs) do
+
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0.25, -3, 1, 0)
-    button.BackgroundColor3 = PANEL
+    button.Name = name
+    button.Size = UDim2.new(1, 0, 0, 42)
+    button.BackgroundColor3 = ROW
     button.Text = name
     button.TextColor3 = GRAY
-    button.TextSize = 9
     button.Font = Enum.Font.GothamBold
-    button.Parent = TabBar
+    button.TextSize = 12
+    button.LayoutOrder = index
+    button.Parent = Sidebar
+
     corner(button, 7)
 
+    local indicator = Instance.new("Frame")
+    indicator.Size = UDim2.new(0, 4, 1, -8)
+    indicator.Position = UDim2.new(0, 0, 0, 4)
+    indicator.BackgroundColor3 = ORANGE
+    indicator.Visible = false
+    indicator.Parent = button
+    corner(indicator, 5)
+
     local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, -16, 1, -16)
-    page.Position = UDim2.fromOffset(8, 8)
+    page.Name = name .. "_Page"
+    page.Size = UDim2.new(1, -20, 1, -60)
+    page.Position = UDim2.fromOffset(10, 55)
     page.BackgroundTransparency = 1
     page.BorderSizePixel = 0
     page.ScrollBarThickness = 3
@@ -297,52 +362,96 @@ for _, name in ipairs(Tabs) do
     page.Parent = Content
 
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 7)
+    layout.Padding = UDim.new(0, 8)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = page
 
     Pages[name] = page
-    TabButtons[name] = button
+    TabButtons[name] = {
+        Button = button,
+        Indicator = indicator
+    }
 
     button.Activated:Connect(function()
+        activeTab = name
+
         for tab, p in pairs(Pages) do
-            p.Visible = tab == name
-            TabButtons[tab].TextColor3 =
-                tab == name and ORANGE or GRAY
-            TabButtons[tab].BackgroundColor3 =
-                tab == name
-                and Color3.fromRGB(55, 40, 30)
-                or PANEL
+            local selected = tab == name
+
+            p.Visible = selected
+            TabButtons[tab].Button.TextColor3 =
+                selected and ORANGE or GRAY
+
+            TabButtons[tab].Button.BackgroundColor3 =
+                selected and Color3.fromRGB(57, 45, 35) or ROW
+
+            TabButtons[tab].Indicator.Visible = selected
         end
     end)
 end
 
 local function selectTab(name)
+    activeTab = name
+
     for tab, page in pairs(Pages) do
-        page.Visible = tab == name
-        TabButtons[tab].TextColor3 =
-            tab == name and ORANGE or GRAY
-        TabButtons[tab].BackgroundColor3 =
-            tab == name
-            and Color3.fromRGB(55, 40, 30)
-            or PANEL
+        local selected = tab == name
+
+        page.Visible = selected
+        TabButtons[tab].Button.TextColor3 =
+            selected and ORANGE or GRAY
+
+        TabButtons[tab].Button.BackgroundColor3 =
+            selected and Color3.fromRGB(57, 45, 35) or ROW
+
+        TabButtons[tab].Indicator.Visible = selected
     end
 end
 
 selectTab("VISUAL")
 
 --============================================================
+-- SEARCH REGISTRY
+--============================================================
+
+local function registerSearch(object, name, tab)
+    table.insert(rowRegistry, {
+        Object = object,
+        Name = string.lower(name),
+        Tab = tab
+    })
+end
+
+Search:GetPropertyChangedSignal("Text"):Connect(function()
+    local query = string.lower(Search.Text)
+
+    for _, item in ipairs(rowRegistry) do
+        local matches =
+            query == ""
+            or string.find(item.Name, query, 1, true) ~= nil
+
+        item.Object.Visible =
+            Pages[item.Tab].Visible and matches
+    end
+end)
+
+--============================================================
 -- UI BUILDERS
 --============================================================
 
 local function section(parent, text)
-    local l = makeLabel(
+    local l = label(
         parent,
         text,
-        UDim2.new(1, 0, 0, 24),
+        UDim2.new(1, 0, 0, 27),
         UDim2.new(),
         ORANGE
     )
-    l.TextSize = 11
+
+    l.Font = Enum.Font.GothamBold
+    l.TextSize = 12
+
+    registerSearch(l, text, parent.Name:gsub("_Page", ""))
+
     return l
 end
 
@@ -350,48 +459,56 @@ local function toggle(parent, name, initial, callback)
     local state = initial
 
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -4, 0, 39)
+    button.Size = UDim2.new(1, -4, 0, 46)
     button.BackgroundColor3 = ROW
     button.Text = ""
     button.Parent = parent
+
     corner(button, 8)
 
-    makeLabel(
+    local textLabel = label(
         button,
         name,
-        UDim2.new(1, -65, 1, 0),
-        UDim2.fromOffset(12, 0),
+        UDim2.new(1, -85, 1, 0),
+        UDim2.fromOffset(14, 0),
         WHITE
     )
 
+    textLabel.Font = Enum.Font.GothamMedium
+    textLabel.TextSize = 13
+
     local indicator = Instance.new("Frame")
-    indicator.Size = UDim2.fromOffset(38, 20)
-    indicator.Position = UDim2.new(1, -48, 0.5, -10)
-    indicator.BackgroundColor3 = Color3.fromRGB(58, 52, 60)
+    indicator.Size = UDim2.fromOffset(48, 25)
+    indicator.Position = UDim2.new(1, -60, 0.5, -12)
+    indicator.BackgroundColor3 = Color3.fromRGB(65, 65, 70)
     indicator.Parent = button
+
     corner(indicator, 20)
 
     local dot = Instance.new("Frame")
-    dot.Size = UDim2.fromOffset(16, 16)
-    dot.Position = UDim2.fromOffset(2, 2)
+    dot.Size = UDim2.fromOffset(19, 19)
+    dot.Position = UDim2.fromOffset(3, 3)
     dot.BackgroundColor3 = WHITE
     dot.Parent = indicator
+
     corner(dot, 20)
 
     local function refresh()
-        indicator.BackgroundColor3 = state
-            and ORANGE
-            or Color3.fromRGB(58, 52, 60)
+        indicator.BackgroundColor3 = state and GREEN
+            or Color3.fromRGB(65, 65, 70)
 
         dot.Position = state
-            and UDim2.new(1, -18, 0, 2)
-            or UDim2.fromOffset(2, 2)
+            and UDim2.new(1, -22, 0, 3)
+            or UDim2.fromOffset(3, 3)
     end
 
     local function setState(value)
         state = value
         refresh()
-        callback(state)
+
+        if callback then
+            callback(state)
+        end
     end
 
     button.Activated:Connect(function()
@@ -399,6 +516,8 @@ local function toggle(parent, name, initial, callback)
     end)
 
     refresh()
+
+    registerSearch(button, name, parent.Name:gsub("_Page", ""))
 
     return {
         Get = function()
@@ -410,22 +529,42 @@ end
 
 local function actionButton(parent, name, color, callback)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -4, 0, 40)
+    button.Size = UDim2.new(1, -4, 0, 43)
     button.BackgroundColor3 = color
     button.Text = name
     button.TextColor3 = WHITE
     button.Font = Enum.Font.GothamBold
     button.TextSize = 12
     button.Parent = parent
+
     corner(button, 8)
 
     button.Activated:Connect(callback)
 
+    registerSearch(button, name, parent.Name:gsub("_Page", ""))
+
     return button
 end
 
+local function infoText(parent, text, height)
+    local l = label(
+        parent,
+        text,
+        UDim2.new(1, -4, 0, height or 40),
+        UDim2.new(),
+        GRAY
+    )
+
+    l.TextSize = 11
+    l.TextWrapped = true
+
+    registerSearch(l, text, parent.Name:gsub("_Page", ""))
+
+    return l
+end
+
 --============================================================
--- PROMPT SYSTEM - LOCAL
+-- PROMPT SYSTEM
 --============================================================
 
 local function isDoorPrompt(prompt)
@@ -465,39 +604,21 @@ local function restorePrompts()
             end)
         end
     end
+
+    table.clear(promptOriginals)
 end
 
 local function applyPrompts()
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") then
-            if Config.InstantPrompt then
+    if Config.InstantPrompt then
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then
                 checkPrompt(obj)
             end
         end
-    end
-
-    if not Config.InstantPrompt then
+    else
         restorePrompts()
     end
 end
-
-for _, obj in ipairs(Workspace:GetDescendants()) do
-    if obj:IsA("ProximityPrompt") then
-        checkPrompt(obj)
-    end
-end
-
-Workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("ProximityPrompt") then
-        task.defer(function()
-            checkPrompt(obj)
-        end)
-    end
-end)
-
-PromptService.PromptShown:Connect(function(prompt)
-    checkPrompt(prompt)
-end)
 
 --============================================================
 -- ESP SYSTEM
@@ -509,9 +630,6 @@ local function removeESP(obj)
 
     pcall(function()
         data.Highlight:Destroy()
-    end)
-
-    pcall(function()
         data.Billboard:Destroy()
     end)
 
@@ -533,6 +651,7 @@ local function addESP(obj)
     if not root then return end
 
     local success, data = pcall(function()
+
         local highlight = Instance.new("Highlight")
         highlight.Name = "DoorESP_Highlight"
         highlight.Adornee = obj
@@ -553,20 +672,19 @@ local function addESP(obj)
         billboard.Adornee = root
         billboard.Parent = Gui
 
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.fromScale(1, 1)
-        label.BackgroundTransparency = 1
-        label.TextColor3 = color
-        label.Font = Enum.Font.GothamBold
-        label.TextSize = 14
-        label.TextStrokeTransparency = 0.3
-        label.Text = ""
-        label.Parent = billboard
+        local text = Instance.new("TextLabel")
+        text.Size = UDim2.fromScale(1, 1)
+        text.BackgroundTransparency = 1
+        text.TextColor3 = color
+        text.Font = Enum.Font.GothamBold
+        text.TextSize = 14
+        text.TextStrokeTransparency = 0.3
+        text.Parent = billboard
 
         return {
             Highlight = highlight,
             Billboard = billboard,
-            Label = label,
+            Label = text,
             Root = root
         }
     end)
@@ -598,10 +716,19 @@ local function clearAll()
 end
 
 --============================================================
+-- PART 2 CONTINUES BELOW
+--============================================================
+
+--============================================================
+-- DOOR ESP PRO v2.0
+-- PART 2/2
+--============================================================
+
+--============================================================
 -- VISUAL TAB
 --============================================================
 
-section(Pages.VISUAL, "ESP SETTINGS")
+section(Pages.VISUAL, "VISUAL ESP")
 
 local espToggle = toggle(
     Pages.VISUAL,
@@ -642,27 +769,24 @@ toggle(
 
 section(Pages.VISUAL, "DOOR COLORS")
 
-local colorInfo = makeLabel(
+infoText(
     Pages.VISUAL,
-    "YELLOW  - Normal Door\nORANGE  - Halloween Door",
-    UDim2.new(1, 0, 0, 45),
-    UDim2.new(),
-    WHITE
+    "YELLOW = Normal Door\nORANGE = Halloween Door",
+    45
 )
-colorInfo.TextSize = 12
 
 section(Pages.VISUAL, "MAX DISTANCE")
 
-local rangeLabel = makeLabel(
+local rangeLabel = label(
     Pages.VISUAL,
     "Range: " .. Config.MaxDistance .. " studs",
-    UDim2.new(1, 0, 0, 25),
+    UDim2.new(1, 0, 0, 27),
     UDim2.new(),
     WHITE
 )
 
 local rangeFrame = Instance.new("Frame")
-rangeFrame.Size = UDim2.new(1, -4, 0, 36)
+rangeFrame.Size = UDim2.new(1, -4, 0, 42)
 rangeFrame.BackgroundTransparency = 1
 rangeFrame.Parent = Pages.VISUAL
 
@@ -670,18 +794,6 @@ local rangeLayout = Instance.new("UIListLayout")
 rangeLayout.FillDirection = Enum.FillDirection.Horizontal
 rangeLayout.Padding = UDim.new(0, 8)
 rangeLayout.Parent = rangeFrame
-
-local function makeRangeButton(text, callback)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0.5, -4, 1, 0)
-    b.BackgroundColor3 = Color3.fromRGB(55, 40, 30)
-    b.Text = text
-    b.TextColor3 = ORANGE
-    b.Font = Enum.Font.GothamBold
-    b.Parent = rangeFrame
-    corner(b, 7)
-    b.Activated:Connect(callback)
-end
 
 local function updateRange()
     rangeLabel.Text = "Range: " .. Config.MaxDistance .. " studs"
@@ -691,13 +803,35 @@ local function updateRange()
     end
 end
 
-makeRangeButton("- 500", function()
-    Config.MaxDistance = math.max(100, Config.MaxDistance - 500)
+local function rangeButton(text, callback)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0.5, -4, 1, 0)
+    b.BackgroundColor3 = ROW
+    b.Text = text
+    b.TextColor3 = ORANGE
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 13
+    b.Parent = rangeFrame
+
+    corner(b, 7)
+    b.Activated:Connect(callback)
+
+    return b
+end
+
+rangeButton("- 500", function()
+    Config.MaxDistance = math.max(
+        100,
+        Config.MaxDistance - 500
+    )
     updateRange()
 end)
 
-makeRangeButton("+ 500", function()
-    Config.MaxDistance = math.min(10000, Config.MaxDistance + 500)
+rangeButton("+ 500", function()
+    Config.MaxDistance = math.min(
+        10000,
+        Config.MaxDistance + 500
+    )
     updateRange()
 end)
 
@@ -717,13 +851,11 @@ toggle(
     end
 )
 
-makeLabel(
+infoText(
     Pages.INTERACTION,
-    "Modifies the local ProximityPrompt settings.",
-    UDim2.new(1, 0, 0, 40),
-    UDim2.new(),
-    GRAY
-).TextSize = 11
+    "Local ProximityPrompt settings. Changes may not be accepted by the game server.",
+    55
+)
 
 --============================================================
 -- COMBAT TAB
@@ -731,23 +863,24 @@ makeLabel(
 
 section(Pages.COMBATE, "COMBAT OPTIONS")
 
-local combatText = makeLabel(
+local combatInfo = label(
     Pages.COMBATE,
-    "COMBATE\n\nPróximamente...",
-    UDim2.new(1, 0, 0, 140),
+    "COMBAT\n\nPróximamente...",
+    UDim2.new(1, 0, 0, 150),
     UDim2.new(),
     ORANGE
 )
 
-combatText.TextSize = 21
-combatText.TextXAlignment = Enum.TextXAlignment.Center
-combatText.TextYAlignment = Enum.TextYAlignment.Center
+combatInfo.Font = Enum.Font.GothamBold
+combatInfo.TextSize = 22
+combatInfo.TextXAlignment = Enum.TextXAlignment.Center
+combatInfo.TextYAlignment = Enum.TextYAlignment.Center
 
 --============================================================
 -- SETTINGS TAB
 --============================================================
 
-section(Pages.SETTINGS, "GENERAL")
+section(Pages.SETTINGS, "GENERAL SETTINGS")
 
 toggle(
     Pages.SETTINGS,
@@ -773,7 +906,7 @@ actionButton(
 actionButton(
     Pages.SETTINGS,
     "RESTORE ESP",
-    Color3.fromRGB(55, 100, 65),
+    Color3.fromRGB(45, 105, 75),
     function()
         espSuspended = false
         espToggle.Set(true)
@@ -784,7 +917,7 @@ actionButton(
 actionButton(
     Pages.SETTINGS,
     "DESTROY SCRIPT",
-    Color3.fromRGB(95, 35, 40),
+    Color3.fromRGB(100, 40, 45),
     function()
         if _G.DoorESP_Destroy then
             _G.DoorESP_Destroy()
@@ -792,24 +925,54 @@ actionButton(
     end
 )
 
-makeLabel(
+infoText(
     Pages.SETTINGS,
-    "DOOR ESP PRO v1.2",
-    UDim2.new(1, 0, 0, 25),
-    UDim2.new(),
-    GRAY
+    "DOOR ESP PRO v2.0\nCreated for Android and PC",
+    45
 )
+
+--============================================================
+-- SEARCH REFRESH
+--============================================================
+
+local function refreshSearch()
+    local query = string.lower(Search.Text)
+
+    for _, item in ipairs(rowRegistry) do
+        local matches =
+            query == ""
+            or string.find(item.Name, query, 1, true) ~= nil
+
+        item.Object.Visible =
+            Pages[item.Tab].Visible and matches
+    end
+end
+
+Search:GetPropertyChangedSignal("Text"):Connect(refreshSearch)
+
+for name, data in pairs(TabButtons) do
+    data.Button.Activated:Connect(function()
+        task.defer(refreshSearch)
+    end)
+end
 
 --============================================================
 -- WORLD TRACKER
 --============================================================
 
 local addedConnection = Workspace.DescendantAdded:Connect(function(obj)
+
     if getColor(obj.Name) then
         task.defer(function()
             if obj.Parent then
                 addESP(obj)
             end
+        end)
+    end
+
+    if obj:IsA("ProximityPrompt") then
+        task.defer(function()
+            checkPrompt(obj)
         end)
     end
 end)
@@ -821,44 +984,73 @@ local removingConnection = Workspace.DescendantRemoving:Connect(function(obj)
 end)
 
 --============================================================
+-- PROMPT EVENTS
+--============================================================
+
+local promptConnection = PromptService.PromptShown:Connect(function(prompt)
+    checkPrompt(prompt)
+end)
+
+--============================================================
 -- UPDATE LOOP
 --============================================================
 
 local updateElapsed = 0
 
 local renderConnection = RunService.RenderStepped:Connect(function(dt)
+
     updateElapsed += dt
 
-    if updateElapsed < 0.1 then return end
+    if updateElapsed < 0.1 then
+        return
+    end
+
     updateElapsed = 0
 
     local camera = Workspace.CurrentCamera
-    if not camera then return end
+
+    if not camera then
+        return
+    end
 
     local camPos = camera.CFrame.Position
 
     for obj, data in pairs(tracked) do
+
         if not obj.Parent then
             removeESP(obj)
+
         else
             local root = data.Root
 
             if not root or not root.Parent then
                 root = getRoot(obj)
                 data.Root = root
+
+                if root then
+                    data.Billboard.Adornee = root
+                    data.Billboard.StudsOffsetWorldSpace =
+                        Vector3.new(0, getHeight(obj), 0)
+                end
             end
 
             if not Config.ESP or espSuspended or not root then
+
                 data.Highlight.Enabled = false
                 data.Billboard.Enabled = false
+
             else
-                local distance = (camPos - root.Position).Magnitude
-                local visible = distance <= Config.MaxDistance
+                local distance =
+                    (camPos - root.Position).Magnitude
+
+                local visible =
+                    distance <= Config.MaxDistance
 
                 data.Highlight.Enabled = visible
                 data.Billboard.Enabled = visible
 
                 if visible then
+
                     local parts = {}
 
                     if Config.ShowName then
@@ -884,11 +1076,17 @@ end)
 --============================================================
 
 scan()
+applyPrompts()
 
 task.spawn(function()
+
     while not destroyed and Gui.Parent do
+
         task.wait(3)
-        scan()
+
+        if not destroyed then
+            scan()
+        end
     end
 end)
 
@@ -897,13 +1095,17 @@ end)
 --============================================================
 
 _G.DoorESP_Destroy = function()
-    if destroyed then return end
+
+    if destroyed then
+        return
+    end
 
     destroyed = true
 
     addedConnection:Disconnect()
     removingConnection:Disconnect()
     renderConnection:Disconnect()
+    promptConnection:Disconnect()
 
     for obj in pairs(tracked) do
         removeESP(obj)
@@ -915,7 +1117,14 @@ _G.DoorESP_Destroy = function()
 
     _G.DoorESP_Destroy = nil
 
-    print("[Door ESP PRO] Destroyed successfully")
+    print("[Door ESP PRO v2.0] Destroyed successfully!")
 end
 
-print("[Door ESP PRO v1.2] Loaded successfully!")
+--============================================================
+-- LOADED
+--============================================================
+
+print("====================================")
+print("       DOOR ESP PRO v2.0")
+print("       Loaded successfully!")
+print("====================================")
